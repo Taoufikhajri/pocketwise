@@ -3,9 +3,27 @@ import { draftSchema, normalizeDraft, SmartError } from './smart-core.js';
 async function providerJSON(fetcher, url, options) {
   const response = await fetcher(url,options);
   if (!response.ok) {
-    if (response.status===429) throw new SmartError(429,'The AI provider is busy or its API credit limit was reached. Try later or check your API billing.');
-    if (response.status===401 || response.status===403) throw new SmartError(503,'The AI provider key needs attention. Check the server configuration.');
-    throw new SmartError(502,'The AI provider could not process this input. Try a clearer photo or shorter voice note.');
+    // Provider messages can contain credentials or submitted content. Return only
+    // locally written guidance and recognized codes, never the raw error body.
+    let body;try{body=await response.json();}catch{}
+    const guidance={
+      invalid_api_key:'OpenAI rejected the key. Check OPENAI_API_KEY in Vercel Production and redeploy.',
+      insufficient_permissions:'The OpenAI key lacks permission for this request. Check its endpoint permissions and project access.',
+      unsupported_country_region_territory:'OpenAI blocked this request by region. Check the Vercel function region against OpenAI supported regions.',
+      insufficient_quota:'OpenAI API quota is exhausted. Check the API project billing and spending limits.',
+      credit_balance_exhausted:'OpenAI API credits are exhausted. Check the API project billing.',
+      model_not_found:'The selected OpenAI model is unavailable to this project. Check the model setting and project access.',
+      rate_limit_exceeded:'OpenAI rate limited this request. Wait before retrying.',
+    };
+    const rawCode=body?.error?.code;
+    const code=typeof rawCode==='string' && Object.hasOwn(guidance,rawCode)?rawCode:'';
+    const stage=url.endsWith('/transcriptions')?'Transcription':'Responses';
+    const detail=`[OpenAI ${response.status}${code?` ${code}`:''}; ${stage}]`;
+    const fallback=response.status===401?'OpenAI rejected authentication. Check the key, its permissions and project access.':
+      response.status===403?'OpenAI denied access. Check project permissions and any region or IP restrictions.':
+      response.status===429?'OpenAI could not accept this request. Check API billing and rate limits.':
+      'OpenAI could not process this request. Share this error code to troubleshoot.';
+    throw new SmartError(response.status===429?429:response.status===401 || response.status===403?503:502,`${code?guidance[code]:fallback} ${detail}`);
   }
   return response.json();
 }
