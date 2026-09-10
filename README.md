@@ -2,10 +2,13 @@
 
 A personal money manager for daily income, expenses, and monthly budgets. Canadian dollars (CAD) are the default. Built with JavaScript, Vite, and Supabase, ready for GitHub and Vercel.
 
+**New in 1.1:** scan a receipt photo, record/upload a voice note, or type a plain-language transaction. AI suggests an editable draft; you review and save it. [Enable smart entry](SMART-ENTRY-SETUP.md).
+
 ## What you get
 
 - Responsive dashboard for desktop and phone.
 - Add, edit, delete, search, and filter transactions by month, type, and category.
+- Receipt photos and voice entry with review before saving, uncertain-field prompts, and a possible-duplicate warning.
 - Bank, cash, and credit card labels for transactions.
 - Monthly category budgets, progress bars, overspending notices, and copying the previous month's plan.
 - Category spending charts and six-month income/expense reports.
@@ -19,9 +22,9 @@ A personal money manager for daily income, expenses, and monthly budgets. Canadi
 
 ### 1. Upload this folder to GitHub
 
-1. Extract `pocketwise-source.zip`.
+1. Extract the Pocketwise source ZIP.
 2. Create a new GitHub repository, for example `pocketwise`.
-3. Upload **the contents of the `pocketwise` folder**, so `package.json`, `index.html`, and `vercel.json` are at the repository root. Include `src`, `public`, `supabase`, and `tests`.
+3. Upload **the contents of the `pocketwise` folder**, so `package.json`, `index.html`, `vite.config.js`, and `vercel.json` are at the repository root. Include `api`, `server`, `src`, `public`, `supabase`, and `tests`.
 4. Include `.gitignore` and `.env.example`. Do not upload `.env`, `node_modules`, or `dist`.
 
 You can use GitHub's **Add file → Upload files**, GitHub Desktop, or Git. If you put the entire `pocketwise` folder inside your repository instead, select that folder as Vercel's Root Directory in step 3.
@@ -31,6 +34,7 @@ You can use GitHub's **Add file → Upload files**, GitHub Desktop, or Git. If y
 1. Create a project at [Supabase](https://supabase.com/dashboard).
 2. Open **SQL Editor**, create a new query, and paste the entire contents of [`supabase/schema.sql`](supabase/schema.sql).
 3. Run the query once. It creates the tables, access policies, and atomic budget/restore functions. This script targets a **new project**; don't rerun it over existing tables.
+   For receipt/voice entry, also run [`supabase/smart-entry.sql`](supabase/smart-entry.sql). Existing users only need this new migration; keep their original tables and records.
 4. In **Authentication → Providers**, enable email/password sign-in. Keep email confirmation enabled.
 5. Copy the **Project URL** and **publishable key** from the project's Connect dialog or API key settings.
 
@@ -54,6 +58,8 @@ Only use the **publishable** key (or legacy public `anon` key). **Never use a se
 4. Click **Deploy**.
 
 These values are embedded when Vite builds the app. Adding or changing them afterward requires a **Redeploy**. Without them, the app intentionally opens in demo mode. [Vercel build configuration](https://vercel.com/docs/builds/configure-a-build).
+
+For AI features, add server-only `OPENAI_API_KEY` and `AI_ALLOWED_EMAILS` as explained in [the smart-entry setup guide](SMART-ENTRY-SETUP.md). Do not use a `VITE_` prefix for the OpenAI key.
 
 ### 4. Set the authentication URLs
 
@@ -84,6 +90,8 @@ npm run dev
 
 Open the local address printed in the terminal. Changes to `.env` need a development-server restart.
 
+The development server includes `/api/smart-entry` through `vite.config.js`. Add your server-only settings to `.env` to use AI locally. `npm run preview` serves static files only; use `npm run dev` or the Vercel deployment when testing smart entry.
+
 ```sh
 npm test
 npm run build
@@ -99,7 +107,7 @@ npm run preview
 - Budgets apply to one month. Use **Copy previous month** to carry limits forward and review them before saving.
 - Reports use transaction dates. You can enter past or future dates; future-dated entries are included in the selected month. Average daily expense divides by all calendar days in that month.
 - CAD is the default. USD, PHP, EUR, GBP, AUD, and INR are available. Currency is one account-wide display unit; changing it relabels amounts and **does not perform exchange conversion**.
-- This app records money manually. There are no bank connections, automatic bill payments, scheduled transactions, or financial recommendations.
+- Transactions are saved only after you review and submit them, including AI suggestions. There are no bank connections, automatic bill payments, scheduled transactions, or financial recommendations. Scanning an unpaid bill does not pay it or schedule it; confirm whether it belongs in your recorded expenses.
 
 ## Sync, backups, and privacy
 
@@ -115,7 +123,9 @@ Backups support up to 20,000 transactions and 3,000 category budgets, with a 64 
 
 The automated suite covers exact-cents arithmetic, dates, month/category totals, backup validation/size, CSV formula escaping, transaction create/edit/search/delete, budget edits, DOM injection escaping, database account isolation, anonymous access denial, and atomic restore rollback. Database tests run the supplied SQL inside PGlite (PostgreSQL) with test authentication roles. UI interaction tests run the actual app bundle in jsdom.
 
-The production build and these tests were checked during delivery. **Live Supabase email delivery, live authentication, two-device syncing, and browser visual layout still need verification using your deployed project.** No real backend credentials were supplied with the source.
+Smart-entry tests also cover authentication and the email allowlist, daily quota enforcement, malformed/oversized input, draft normalization, currency mismatch, provider errors/refusals, receipt and transcription request construction, and review before save. Provider HTTP responses are simulated; tests do not spend API credits.
+
+The production build and these tests were checked during delivery. **Live Supabase email delivery, live authentication, two-device syncing, live OpenAI extraction/transcription, microphone permissions, and browser visual layout still need verification using your deployed project.** No real backend credentials or AI API key were supplied with the source.
 
 Before entering your actual finances:
 
@@ -126,6 +136,7 @@ Before entering your actual finances:
 5. Set a small category budget and add an expense over its limit; check the warning and monthly totals.
 6. Download a backup, make a temporary change, and restore the backup. Check the original totals return.
 7. Check the desktop and mobile layouts and keyboard navigation in your browsers.
+8. Follow the receipt and voice checks in [SMART-ENTRY-SETUP.md](SMART-ENTRY-SETUP.md).
 
 ## Troubleshooting
 
@@ -149,10 +160,16 @@ src/views.js          Escaped HTML templates and data-driven charts
 src/finance.js        Money calculations, validation, CSV, demo records
 src/data.js           Supabase database access
 src/styles.css        Responsive layout and styling
+src/smart-entry.js    Receipt preparation, recording, AI draft workflow
+src/smart-entry.css   Smart-entry interface styles
+api/smart-entry.js    Vercel server endpoint
+server/              Authentication, validation, and OpenAI requests
 supabase/schema.sql  Tables, row-level policies, budget/restore functions
+supabase/smart-entry.sql  Per-account atomic smart-entry usage limit
 tests/               Finance, interaction, and database tests
 vercel.json          Vercel build and response-header configuration
-.env.example         Required public configuration variable names
+vite.config.js       Local server endpoint for development
+.env.example         Public and server-only configuration variable names
 ```
 
 This is an original implementation inspired by common expense-manager workflows. It does not copy Money Manager's source code or branding.

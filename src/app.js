@@ -2,12 +2,19 @@ import './styles.css';
 import { CURRENCIES, EXPENSES, INCOME, MAX_BACKUP_BYTES, cents, today, shiftMonth, monthLabel, demoData, validateTransaction, validateBackup, toCSV } from './finance.js';
 import { client, configured, loadData, saveTransaction, deleteTransaction, saveBudgets, saveCurrency, restoreBackup } from './data.js';
 import { escape, icon, shell, modal, transactionForm, transactionResults, filteredTransactions } from './views.js';
+import { createSmartEntry } from './smart-entry.js';
 
 const app=document.querySelector('#app'), dialog=document.querySelector('#dialog');
 const state={...demoData(),demo:true,user:null,page:'overview',month:today().slice(0,7),entryDate:today(),search:'',filter:'all',category:'all',offset:0,ready:true,loading:false,loadError:''};
 let busy=false, requestId=0, authMode='signin', pendingBackup=null, toastTimer;
 const currentPage=()=>['overview','transactions','budgets','reports','settings'].includes(location.hash.slice(1))?location.hash.slice(1):'overview';
 state.page=currentPage();
+const smart=createSmartEntry({dialog,open,context:()=>({demo:state.demo,client,userId:state.user?.id,currency:state.currency}),onDraft:result=>{
+  const warnings=[...(result.warnings || [])];
+  const r=result.transaction;
+  if(r.amount&&state.transactions.some(t=>t.date===r.date&&t.amount===r.amount&&t.type===r.type))warnings.push('A transaction with this date and amount already exists. Check for a duplicate before saving.');
+  open(transactionForm(state,r,{...result,warnings}));
+}});
 function render() { app.innerHTML=shell(state); }
 function toast(message,error=false) {
   const el=document.querySelector('#toast'); el.textContent=message;el.className=`visible ${error?'error':''}`;
@@ -41,6 +48,7 @@ async function refresh({silent=false}={}) {
 }
 async function useSession(session) {
   if(session?.user.id===state.user?.id && !state.demo) return;
+  smart.cleanup();
   requestId++;
   if(session?.user) {
     Object.assign(state,{demo:false,user:session.user,transactions:[],budgets:[],currency:'CAD',ready:false,loadError:'',offset:0});
@@ -75,6 +83,8 @@ async function action(name,el) {
     case 'auth-signup':authForm('signup');break;
     case 'auth-reset':authForm('reset');break;
     case 'add':ensureReady();state.entryDate=entryDate();open(transactionForm(state));break;
+    case 'smart-receipt':ensureReady();smart.start('receipt');break;
+    case 'smart-voice':ensureReady();smart.start('voice');break;
     case 'edit':ensureReady();{const row=state.transactions.find(t=>t.id===el.dataset.id);if(row)open(transactionForm(state,row));}break;
     case 'prev-month':case 'next-month':{
       const next=shiftMonth(state.month,name==='prev-month'?-1:1);

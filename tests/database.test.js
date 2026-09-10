@@ -14,10 +14,18 @@ test('database enforces account isolation, budget uniqueness and atomic restore'
       grant execute on function auth.uid() to authenticated,anon;
       insert into auth.users values ('${alice}'),('${bob}');`);
     await db.exec(await readFile(new URL('../supabase/schema.sql',import.meta.url),'utf8'));
+    const smartSQL=await readFile(new URL('../supabase/smart-entry.sql',import.meta.url),'utf8');
+    await db.exec(smartSQL);
+    await db.exec(smartSQL); // Existing deployments can safely rerun the migration.
     await db.exec(`set role authenticated; set request.jwt.claim.sub='${alice}';`);
+    for(let i=0;i<30;i++)assert.equal((await db.query('select public.consume_smart_entry() as allowed')).rows[0].allowed,true);
+    assert.equal((await db.query('select public.consume_smart_entry() as allowed')).rows[0].allowed,false);
+    await assert.rejects(db.query('update public.smart_entry_usage set attempts=1'),/permission denied/);
     const {rows}=await db.query(`insert into public.transactions(user_id,date,type,amount,category,account,note) values ($1,'2026-09-01','expense',1029,'Groceries','Bank','Alice lunch') returning id`,[alice]);
     const id=rows[0].id;
     await db.exec(`set request.jwt.claim.sub='${bob}';`);
+    assert.equal((await db.query('select * from public.smart_entry_usage')).rows.length,0);
+    assert.equal((await db.query('select public.consume_smart_entry() as allowed')).rows[0].allowed,true);
     assert.equal((await db.query('select * from public.transactions')).rows.length,0);
     assert.equal((await db.query('update public.transactions set amount=1 where id=$1 returning id',[id])).rows.length,0);
     await assert.rejects(db.query(`insert into public.transactions(user_id,date,type,amount,category,account) values ($1,'2026-09-01','expense',5,'Groceries','Bank')`,[alice]),/row-level security/);
@@ -36,6 +44,7 @@ test('database enforces account isolation, budget uniqueness and atomic restore'
     await db.exec(`set request.jwt.claim.sub='${bob}';`);
     assert.equal((await db.query('select note from public.transactions')).rows[0].note,'Bob income','restore must not affect another user');
     await db.exec('set role anon;');
+    await assert.rejects(db.query('select public.consume_smart_entry()'),/permission denied/);
     await assert.rejects(db.query('select * from public.transactions'),/permission denied/);
     await assert.rejects(db.query('select public.restore_backup($1::jsonb)',[JSON.stringify(backup)]),/permission denied/);
   } finally {await db.close();}

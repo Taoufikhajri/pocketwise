@@ -53,3 +53,19 @@ test('monthly budgets update and navigation renders every main view',async()=>{
     x.click('[data-action="login"]');assert.match(x.w.document.querySelector('dialog').textContent,/Connect your own workspace/);
   }finally{x.dom.window.close();}
 });
+test('smart entry produces an editable unsaved draft and back preserves typed manual fields',async()=>{
+  const x=await setup();try{
+    x.click('[data-action="add"]');x.fill('amount','45.67');x.fill('note','Keep my typed note');
+    x.click('[data-action="smart-receipt"]');x.click('[data-smart-action="back"]');
+    assert.equal(x.w.document.querySelector('[name="amount"]').value,'45.67');
+    assert.equal(x.w.document.querySelector('[name="note"]').value,'Keep my typed note');
+    x.click('[data-action="smart-voice"]');x.click('[data-smart-action="sample"]');
+    assert.equal(x.w.document.querySelector('#dialog-title').textContent,'Review suggested transaction');
+    assert.equal(x.w.document.querySelector('[name="amount"]').value,'12.50');
+    assert.equal(x.w.document.querySelector('[name="id"]').value,'');
+    assert.equal(x.w.document.querySelector('[data-action="delete"]'),null);
+    assert.ok(!x.w.document.querySelector('#page-content').textContent.includes('Sample lunch'));
+    x.fill('note','Reviewed smart lunch');x.submit();await x.settle();
+    assert.ok(x.w.document.querySelector('#page-content').textContent.includes('Reviewed smart lunch'));
+  }finally{x.dom.window.close();}
+});

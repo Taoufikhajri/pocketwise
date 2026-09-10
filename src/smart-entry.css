@@ -1,0 +1,33 @@
+.smart-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.smart-shortcuts .button{background:#f0f4ff;color:#4964ba;border-color:#dce4fa;min-height:47px}
+.smart-help{font-size:12px;color:#8793a8;margin:10px 0 22px;line-height:1.7}
+.smart-intro{text-align:center;padding:8px 0 15px}
+.smart-symbol{display:inline-flex;align-items:center;justify-content:center;width:65px;height:65px;border-radius:18px;background:#edf2ff;color:#6681df;margin-bottom:18px}
+.smart-symbol .icon{width:29px;height:29px}
+.smart-intro p{font-size:14px;color:#7d8ba3;line-height:1.8;margin:12px 0 22px}
+.smart-upload{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;border:1px dashed #bfccee;border-radius:10px;background:#f8faff;padding:26px 18px;cursor:pointer}
+.smart-upload>.icon{color:#738bd5;width:26px;height:26px}
+.smart-upload strong{font-size:14px;color:#51688f;font-weight:600}
+.smart-upload span{font-size:12px;color:#8a97ae}
+.smart-upload input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.smart-upload:focus-within{outline:3px solid #86a6ff;outline-offset:3px}
+.camera-button{margin-top:12px}
+.smart-preview:empty{display:none}
+.smart-preview{padding:18px 0 8px;text-align:center}
+.smart-preview img{max-width:100%;max-height:260px;object-fit:contain;border-radius:8px}
+.smart-preview audio{width:100%;margin-top:5px}
+.smart-preview p{font-size:12px;overflow-wrap:anywhere;color:#8d98ad;margin:9px 0}
+.smart-status{font-size:14px;color:#526fac;margin:17px 0 10px;line-height:1.6}
+.smart-privacy{font-size:12px;color:#8b96aa;line-height:1.8;margin:12px 0 20px}
+.smart-back{margin-top:20px}
+.field textarea{font:inherit;display:block;margin-top:8px;width:100%;min-height:90px;resize:vertical;border:1px solid #dfe5ee;border-radius:7px;padding:12px;color:#4d5c74;font-size:14px;font-weight:400}
+.smart-preview+.field{margin-top:20px}
+.smart-review-note{background:#edf3ff;border:1px solid #dce5fc;border-radius:9px;padding:15px;margin-bottom:22px;color:#617799;font-size:13px;line-height:1.7}
+.smart-review-note>strong{font-size:13px;display:flex;align-items:center;gap:8px;font-weight:650;color:#4862ae}
+.smart-review-note>strong .icon{width:18px;height:18px}
+.smart-review-note p{margin:8px 0 0}
+.smart-review-note ul{margin:12px 0 0;padding-left:19px}
+.smart-review-note li+li{margin-top:7px}
+.smart-review-note details{margin-top:12px;border-top:1px solid #dce5fc;padding-top:10px}
+.smart-review-note summary{cursor:pointer;font-weight:600;color:#526daf}
+@media(max-width:400px){.smart-shortcuts{gap:8px}.smart-shortcuts .button{font-size:12px;padding-inline:8px}}
