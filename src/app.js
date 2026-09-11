@@ -151,9 +151,14 @@ document.addEventListener('change',async e=>{
   } catch(error){toast(message(error),true);}
 });
 document.addEventListener('submit',e=>{
+  // Named form controls can shadow properties: the hidden name="id" input
+  // replaces form.id in Chromium. Read the actual attribute for routing.
+  const formId=e.target.getAttribute('id');
   if(!['auth-form','transaction-form','budget-form'].includes(e.target.id))return;
+  if(!['auth-form','transaction-form','budget-form'].includes(formId))return;
   e.preventDefault();const form=e.target,fields=new FormData(form);
   if(form.id==='auth-form')run(async()=>{
+  if(formId==='auth-form')run(async()=>{
     const email=String(fields.get('email')||'').trim(),password=String(fields.get('password')||'');
     let result;
     if(authMode==='signin') {result=await client.auth.signInWithPassword({email,password});if(result.error)throw result.error;await useSession(result.data.session);dialog.close();}
@@ -162,6 +167,7 @@ document.addEventListener('submit',e=>{
     else {result=await client.auth.updateUser({password});if(result.error)throw result.error;authMode='signin';dialog.close();toast('Password updated.');}
   });
   if(form.id==='transaction-form')run(async()=>{
+  if(formId==='transaction-form')run(async()=>{
     ensureReady();const id=fields.get('id'),r=validateTransaction({date:fields.get('date'),type:fields.get('type'),amount:cents(fields.get('amount')),category:fields.get('category'),account:fields.get('account'),note:String(fields.get('note')||'')});
     let saved;
     if(state.demo)saved={...r,id:id||crypto.randomUUID()};
@@ -178,6 +184,7 @@ document.addEventListener('submit',e=>{
     dialog.close();render();
   },`Transaction saved for ${fields.get('date')}.`);
   if(form.id==='budget-form')run(async()=>{
+  if(formId==='budget-form')run(async()=>{
     ensureReady();const budgets=EXPENSES.flatMap((category,i)=>{const raw=String(fields.get(`budget-${i}`)||'').trim();return raw===''||/^0+(\.0{1,2})?$/.test(raw)?[]:[{month:state.month,category,amount:cents(raw)}];});
     if(!state.demo)await saveBudgets(state.user.id,state.month,budgets);
     state.budgets=[...state.budgets.filter(b=>b.month!==state.month),...budgets];dialog.close();render();
