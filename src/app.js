@@ -167,8 +167,16 @@ document.addEventListener('submit',e=>{
     if(state.demo)saved={...r,id:id||crypto.randomUUID()};
     else {const uid=state.user.id;saved=await saveTransaction(uid,r,id||undefined);if(state.user?.id!==uid)return;}
     state.transactions=id?state.transactions.map(t=>t.id===id?saved:t):[...state.transactions,saved];
-    state.month=r.date.slice(0,7);state.offset=0;dialog.close();render();
-  },'Transaction saved.');
+    state.month=r.date.slice(0,7);state.offset=0;
+    if(!id){
+      Object.assign(state,{page:'transactions',search:'',filter:'all',category:'all'});
+      const index=filteredTransactions(state).findIndex(t=>t.id===saved.id);
+      state.offset=Math.floor(Math.max(0,index)/25)*25;
+      // Update the URL without a hashchange that would reset the selected page.
+      if(location.hash!=='#transactions')history.pushState(null,'','#transactions');
+    }
+    dialog.close();render();
+  },`Transaction saved for ${fields.get('date')}.`);
   if(form.id==='budget-form')run(async()=>{
     ensureReady();const budgets=EXPENSES.flatMap((category,i)=>{const raw=String(fields.get(`budget-${i}`)||'').trim();return raw===''||/^0+(\.0{1,2})?$/.test(raw)?[]:[{month:state.month,category,amount:cents(raw)}];});
     if(!state.demo)await saveBudgets(state.user.id,state.month,budgets);
